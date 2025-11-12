@@ -5,30 +5,51 @@ interface QuestionsProps {
   questionsData: Question[];
   answers: Answer;
   onAnswerChange: (questionId: number, answer: string) => void;
+  focusedQuestionId: number | null;
+  setFocusedQuestionId: (id: number | null) => void;
+  scrollToQuestion: number | null;
+  setScrollToQuestion: (id: number | null) => void;
 }
 
 interface ContextMenuState {
   x: number;
   y: number;
   visible: boolean;
+  range: Range | null;
 }
 
-const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerChange }) => {
-  const [activeQuestionId, setActiveQuestionId] = useState<number | null>(null);
+const Questions: React.FC<QuestionsProps> = ({ 
+  questionsData, 
+  answers, 
+  onAnswerChange,
+  focusedQuestionId,
+  setFocusedQuestionId,
+  scrollToQuestion,
+  setScrollToQuestion
+}) => {
   const questionsRef = useRef<HTMLDivElement>(null);
-  const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false });
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false, range: null });
 
-  const handleFocus = (q_id: number) => setActiveQuestionId(q_id);
-  const handleBlur = () => setActiveQuestionId(null);
+  useEffect(() => {
+    if (scrollToQuestion !== null) {
+      const element = document.getElementById(`q-wrapper-${scrollToQuestion}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      setScrollToQuestion(null); // Reset after attempting to scroll
+    }
+  }, [scrollToQuestion, setScrollToQuestion]);
+
 
   const handleMouseUp = (e: MouseEvent<HTMLDivElement>) => {
-    // Prevent context menu if clicking on an existing highlight or an input/select element
+    // Prevent context menu if clicking on an existing annotation, or an input/select element
     const target = e.target as HTMLElement;
     if (
-        (target.tagName === 'SPAN' && target.classList.contains('bg-yellow-300')) ||
+        target.closest('.bg-yellow-300') ||
+        target.closest('.has-note') ||
         ['INPUT', 'SELECT', 'LABEL'].includes(target.tagName)
     ) {
-        setContextMenu(prev => ({ ...prev, visible: false }));
+        setContextMenu(prev => ({ ...prev, visible: false, range: null }));
         return;
     }
 
@@ -37,16 +58,17 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
       const range = selection.getRangeAt(0);
       const containerRect = questionsRef.current?.getBoundingClientRect();
 
-      if (containerRect) {
+      if (containerRect && questionsRef.current) {
          setContextMenu({
             x: e.clientX - containerRect.left,
-            y: e.clientY - containerRect.top + window.scrollY + 10,
-            visible: true
+            y: e.clientY - containerRect.top + questionsRef.current.scrollTop + 10,
+            visible: true,
+            range: range
         });
       }
     } else {
        if (contextMenu.visible) {
-           setContextMenu(prev => ({ ...prev, visible: false }));
+           setContextMenu(prev => ({ ...prev, visible: false, range: null }));
        }
     }
   };
@@ -60,13 +82,14 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
                 parent.insertBefore(target.firstChild, target);
             }
             parent.removeChild(target);
+            parent.normalize();
         }
     }
   };
 
   const handleClickOutside = useCallback((event: globalThis.MouseEvent) => {
     if (contextMenu.visible && questionsRef.current && !questionsRef.current.contains(event.target as Node)) {
-        setContextMenu(prev => ({ ...prev, visible: false }));
+        setContextMenu({ x: 0, y: 0, visible: false, range: null });
     }
   }, [contextMenu.visible]);
 
@@ -78,28 +101,55 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
   }, [handleClickOutside]);
 
   const handleHighlight = () => {
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
+    const { range } = contextMenu;
+    if (range) {
       const span = document.createElement('span');
       span.className = 'bg-yellow-300 cursor-pointer';
       span.title = 'Click to remove highlight';
       try {
           range.surroundContents(span);
+          window.getSelection()?.removeAllRanges();
       } catch (e) {
           console.error("Could not surround contents, likely due to partial node selection.", e);
       }
-      selection.removeAllRanges();
     }
-    setContextMenu(prev => ({...prev, visible: false}));
+    setContextMenu({ x: 0, y: 0, visible: false, range: null });
   };
+  
+  const handleNote = () => {
+    const { range } = contextMenu;
+    if (!range || range.collapsed) return;
+
+    const noteText = window.prompt("Enter your note:");
+    if (noteText) {
+      const span = document.createElement('span');
+      span.className = 'has-note';
+      span.title = noteText;
+      
+      const icon = document.createElement('i');
+      icon.className = 'fas fa-comment-dots note-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      
+      try {
+        const contents = range.extractContents();
+        span.appendChild(contents);
+        span.appendChild(icon);
+        range.insertNode(span);
+        window.getSelection()?.removeAllRanges();
+      } catch (e) {
+        console.error("Could not create note, likely due to partial node selection.", e);
+      }
+    }
+    setContextMenu({ x: 0, y: 0, visible: false, range: null });
+  };
+
 
   const renderQuestionType = (qGroup: Question) => {
     switch (qGroup.type) {
       case QuestionType.TRUE_FALSE_NOT_GIVEN:
         const options = qGroup.instructions.includes("YES") ? ["YES", "NO", "NOT GIVEN"] : ["TRUE", "FALSE", "NOT GIVEN"];
         return qGroup.questions.map(q => (
-          <div key={q.q_id} className={`mb-4 p-3 rounded-lg transition-colors ${activeQuestionId === q.q_id ? 'bg-blue-100' : 'bg-gray-50'}`}>
+          <div key={q.q_id} id={`q-wrapper-${q.q_id}`} className={`mb-4 p-3 rounded-lg transition-colors ${focusedQuestionId === q.q_id ? 'bg-blue-100' : 'bg-gray-50'}`}>
             <p className="mb-2">{q.q_id}. {q.text}</p>
             <div className="flex space-x-4">
               {options.map(opt => (
@@ -110,8 +160,8 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
                     value={opt}
                     checked={answers[q.q_id] === opt}
                     onChange={(e) => onAnswerChange(q.q_id, e.target.value)}
-                    onFocus={() => handleFocus(q.q_id)}
-                    onBlur={handleBlur}
+                    onFocus={() => setFocusedQuestionId(q.q_id)}
+                    onBlur={() => setFocusedQuestionId(null)}
                     className="form-radio"
                   />
                   <span>{opt}</span>
@@ -123,14 +173,14 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
       case QuestionType.NOTE_COMPLETION:
       case QuestionType.SUMMARY_COMPLETION:
         return qGroup.questions.map(q => (
-          <div key={q.q_id} className={`mb-2 flex items-baseline p-2 rounded-lg transition-colors ${activeQuestionId === q.q_id ? 'bg-blue-100' : ''}`}>
+          <div key={q.q_id} id={`q-wrapper-${q.q_id}`} className={`mb-2 flex items-baseline p-2 rounded-lg transition-colors ${focusedQuestionId === q.q_id ? 'bg-blue-100' : ''}`}>
              <p className="whitespace-pre-wrap">{q.q_id}. {q.text}</p>
              <input
                 type="text"
                 value={answers[q.q_id] || ''}
                 onChange={(e) => onAnswerChange(q.q_id, e.target.value)}
-                onFocus={() => handleFocus(q.q_id)}
-                onBlur={handleBlur}
+                onFocus={() => setFocusedQuestionId(q.q_id)}
+                onBlur={() => setFocusedQuestionId(null)}
                 className="border-b-2 border-gray-400 focus:border-blue-500 outline-none w-28 mx-2 text-center bg-transparent"
               />
               {q.subtext && <p>{q.subtext}</p>}
@@ -138,7 +188,7 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
         ));
       case QuestionType.MULTIPLE_CHOICE:
         return qGroup.questions.map(q => (
-          <div key={q.q_id} className={`mb-4 p-3 rounded-lg transition-colors ${activeQuestionId === q.q_id ? 'bg-blue-100' : 'bg-gray-50'}`}>
+          <div key={q.q_id} id={`q-wrapper-${q.q_id}`} className={`mb-4 p-3 rounded-lg transition-colors ${focusedQuestionId === q.q_id ? 'bg-blue-100' : 'bg-gray-50'}`}>
             <p className="mb-2 font-semibold">{q.q_id}. {q.text}</p>
             <div className="flex flex-col space-y-2">
               {q.options?.map(opt => (
@@ -149,8 +199,8 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
                     value={opt.substring(0, 1)}
                     checked={answers[q.q_id] === opt.substring(0, 1)}
                     onChange={(e) => onAnswerChange(q.q_id, e.target.value)}
-                    onFocus={() => handleFocus(q.q_id)}
-                    onBlur={handleBlur}
+                    onFocus={() => setFocusedQuestionId(q.q_id)}
+                    onBlur={() => setFocusedQuestionId(null)}
                     className="form-radio"
                   />
                   <span>{opt}</span>
@@ -170,10 +220,10 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
               onAnswerChange(first_q_id, newAnswers.sort().join(','));
           };
           // Apply active style if any of the related questions are active
-          const isActive = q_ids.some(id => activeQuestionId === id);
+          const isActive = q_ids.some(id => focusedQuestionId === id);
 
           return (
-              <div className={`p-3 rounded-lg transition-colors ${isActive ? 'bg-blue-100' : 'bg-gray-50'}`}>
+              <div id={`q-wrapper-${first_q_id}`} className={`p-3 rounded-lg transition-colors ${isActive ? 'bg-blue-100' : 'bg-gray-50'}`}>
                   {qGroup.options?.map(opt => {
                       const optionLetter = opt.substring(0, 1);
                       return (
@@ -184,8 +234,8 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
                                   value={optionLetter}
                                   checked={(answers[first_q_id] || '').split(',').includes(optionLetter)}
                                   onChange={() => handleMultiChoiceChange(optionLetter)}
-                                  onFocus={() => handleFocus(first_q_id)}
-                                  onBlur={handleBlur}
+                                  onFocus={() => setFocusedQuestionId(first_q_id)}
+                                  onBlur={() => setFocusedQuestionId(null)}
                                   className="form-checkbox"
                               />
                               <span>{opt}</span>
@@ -201,14 +251,14 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
       case QuestionType.SUMMARY_COMPLETION_OPTIONS:
         const optionValues = qGroup.type === QuestionType.SUMMARY_COMPLETION_OPTIONS ? qGroup.options?.map(o => o.split(' ')[0]) : qGroup.options?.map(o => o.split(' ')[0]) || ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
         return qGroup.questions.map(q => (
-          <div key={q.q_id} className={`flex items-baseline mb-2 p-3 rounded-lg transition-colors ${activeQuestionId === q.q_id ? 'bg-blue-100' : 'bg-gray-50'}`}>
+          <div key={q.q_id} id={`q-wrapper-${q.q_id}`} className={`flex items-baseline mb-2 p-3 rounded-lg transition-colors ${focusedQuestionId === q.q_id ? 'bg-blue-100' : 'bg-gray-50'}`}>
             <label htmlFor={`q_select_${q.q_id}`} className="flex-1 whitespace-pre-wrap">{q.q_id}. {q.text}</label>
             <select
               id={`q_select_${q.q_id}`}
               value={answers[q.q_id] || ''}
               onChange={(e) => onAnswerChange(q.q_id, e.target.value)}
-              onFocus={() => handleFocus(q.q_id)}
-              onBlur={handleBlur}
+              onFocus={() => setFocusedQuestionId(q.q_id)}
+              onBlur={() => setFocusedQuestionId(null)}
               className="border border-gray-300 rounded-md p-1 ml-2 bg-white"
             >
               <option value="">Select...</option>
@@ -244,8 +294,11 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
           style={{ top: contextMenu.y, left: contextMenu.x }}
           className="absolute bg-white border border-gray-300 rounded-md shadow-lg py-1 z-30"
         >
-          <button onClick={handleHighlight} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+          <button onClick={handleHighlight} className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
             <i className="fas fa-highlighter mr-2"></i>Highlight
+          </button>
+          <button onClick={handleNote} className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <i className="fas fa-comment-dots mr-2"></i>Note
           </button>
         </div>
       )}

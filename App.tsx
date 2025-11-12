@@ -4,7 +4,7 @@ import Header from './components/Header';
 import TestArea from './components/TestArea';
 import ControlPanel from './components/ControlPanel';
 import ResultsModal from './components/ResultsModal';
-import { Answer } from './types';
+import { Answer, QuestionType } from './types';
 
 const TestSelectionScreen: React.FC<{ onSelectTest: (test: TestDefinition) => void }> = ({ onSelectTest }) => (
   <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -35,6 +35,9 @@ const App: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState(3600); // 60 minutes in seconds
   const [showResults, setShowResults] = useState(false);
   const [selectedTest, setSelectedTest] = useState<TestDefinition | null>(null);
+  const [focusedQuestionId, setFocusedQuestionId] = useState<number | null>(null);
+  const [scrollToQuestion, setScrollToQuestion] = useState<number | null>(null);
+
 
   useEffect(() => {
     let timer: number;
@@ -64,6 +67,37 @@ const App: React.FC = () => {
     setShowResults(true);
   }, []);
 
+  const handleQuestionSelect = useCallback((questionId: number) => {
+    if (!selectedTest) return;
+
+    let targetQuestionId = questionId;
+    let partIndex = -1;
+
+    for (let i = 0; i < selectedTest.data.length; i++) {
+        const part = selectedTest.data[i];
+        for (const qGroup of part.questions) {
+            const q_ids = qGroup.questions.map(q => q.q_id);
+            if (q_ids.includes(questionId)) {
+                partIndex = i;
+                if (qGroup.type === QuestionType.MULTIPLE_CHOICE_MULTIPLE) {
+                    targetQuestionId = q_ids[0];
+                }
+                break;
+            }
+        }
+        if (partIndex !== -1) break;
+    }
+    
+    if (partIndex !== -1) {
+      if (currentPart !== partIndex) {
+        setCurrentPart(partIndex);
+        setTimeout(() => setScrollToQuestion(targetQuestionId), 100);
+      } else {
+        setScrollToQuestion(targetQuestionId);
+      }
+    }
+  }, [currentPart, selectedTest]);
+
   const handleCloseResults = () => {
     setShowResults(false);
     // Optional: reset test state here if needed
@@ -75,6 +109,7 @@ const App: React.FC = () => {
     setTimeLeft(3600);
     setCurrentPart(0);
     setShowResults(false);
+    setFocusedQuestionId(null);
   }
 
   if (!selectedTest) {
@@ -85,16 +120,32 @@ const App: React.FC = () => {
     <div className="flex flex-col h-screen font-sans">
       <Header timeLeft={timeLeft} onSubmit={handleSubmit} onExit={handleExitTest} testName={selectedTest.name} />
       <div className="flex-grow overflow-hidden">
-        <TestArea
-          partData={selectedTest.data[currentPart]}
-          answers={answers}
-          onAnswerChange={handleAnswerChange}
-        />
+        {selectedTest.data.map((partData, index) => (
+            <div 
+                key={partData.part} 
+                style={{ display: currentPart === index ? 'flex' : 'none' }} 
+                className="h-full"
+            >
+                <TestArea
+                    partData={partData}
+                    answers={answers}
+                    onAnswerChange={handleAnswerChange}
+                    focusedQuestionId={focusedQuestionId}
+                    setFocusedQuestionId={setFocusedQuestionId}
+                    scrollToQuestion={scrollToQuestion}
+                    setScrollToQuestion={setScrollToQuestion}
+                />
+            </div>
+        ))}
       </div>
       <ControlPanel
         currentPart={currentPart}
         setCurrentPart={setCurrentPart}
         answers={answers}
+        testParts={selectedTest.data}
+        onQuestionSelect={handleQuestionSelect}
+        onSubmit={handleSubmit}
+        focusedQuestionId={focusedQuestionId}
       />
       {showResults && (
         <ResultsModal

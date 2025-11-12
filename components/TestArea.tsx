@@ -7,9 +7,21 @@ interface TestAreaProps {
   partData: TestPart;
   answers: Answer;
   onAnswerChange: (questionId: number, answer: string) => void;
+  focusedQuestionId: number | null;
+  setFocusedQuestionId: (id: number | null) => void;
+  scrollToQuestion: number | null;
+  setScrollToQuestion: (id: number | null) => void;
 }
 
-const TestArea: React.FC<TestAreaProps> = ({ partData, answers, onAnswerChange }) => {
+const TestArea: React.FC<TestAreaProps> = ({ 
+  partData, 
+  answers, 
+  onAnswerChange, 
+  focusedQuestionId, 
+  setFocusedQuestionId,
+  scrollToQuestion,
+  setScrollToQuestion
+}) => {
   const [passageWidth, setPassageWidth] = useState(50); // Initial width in percentage
   const containerRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
@@ -79,6 +91,10 @@ const TestArea: React.FC<TestAreaProps> = ({ partData, answers, onAnswerChange }
           questionsData={partData.questions}
           answers={answers}
           onAnswerChange={onAnswerChange}
+          focusedQuestionId={focusedQuestionId}
+          setFocusedQuestionId={setFocusedQuestionId}
+          scrollToQuestion={scrollToQuestion}
+          setScrollToQuestion={setScrollToQuestion}
         />
       </div>
     </div>

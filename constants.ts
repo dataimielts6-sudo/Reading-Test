@@ -97,7 +97,7 @@ const CAMBRIDGE_18_TEST_1_DATA: TestPart[] = [
           { q_id: 19, text: "If a tree gets infected with Dutch elm disease, the damage rapidly becomes visible." },
           { q_id: 20, text: "It may be better to wait and see if the mature elms that have survived continue to flourish." },
           { q_id: 21, text: "There must be an explanation for the survival of some mature elms." },
-          { q_id: 22, text: "We need to be aware that insects carrying Dutch elm disease are not very far away." },
+          { q_id: 22, text: "There is evidence that insects carrying Dutch elm disease are not very far away." },
           { q_id: 23, text: "You understand the effect Dutch elm disease has had when you see evidence of how prominent the tree once was." }
         ]
       },
@@ -366,6 +366,6 @@ const CAMBRIDGE_20_TEST_1_ANSWERS: Answer = {
 };
 
 export const ALL_TESTS: TestDefinition[] = [
-  { id: 'c20t1', name: 'Cambridge 20 - Reading Test 1', data: CAMBRIDGE_18_TEST_1_DATA, answers: CAMBRIDGE_18_TEST_1_ANSWERS },
-  { id: 'c20t2', name: 'Cambridge 20 - Reading Test 2', data: CAMBRIDGE_20_TEST_1_DATA, answers: CAMBRIDGE_20_TEST_1_ANSWERS },
+  { id: 'c18t1', name: 'Cambridge 20 - Reading test 1', data: CAMBRIDGE_18_TEST_1_DATA, answers: CAMBRIDGE_18_TEST_1_ANSWERS },
+  { id: 'c20t1', name: 'Cambridge 20 - Reading Test 2', data: CAMBRIDGE_20_TEST_1_DATA, answers: CAMBRIDGE_20_TEST_1_ANSWERS },
 ];

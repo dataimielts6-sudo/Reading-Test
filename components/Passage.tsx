@@ -9,35 +9,37 @@ interface ContextMenuState {
   x: number;
   y: number;
   visible: boolean;
+  range: Range | null;
 }
 
 const Passage: React.FC<PassageProps> = ({ passage }) => {
   const passageRef = useRef<HTMLDivElement>(null);
-  const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false });
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false, range: null });
 
   const handleMouseUp = (e: MouseEvent<HTMLDivElement>) => {
-    // Prevent context menu if clicking on an existing highlight
-    if ((e.target as HTMLElement).tagName === 'SPAN' && (e.target as HTMLElement).classList.contains('bg-yellow-300')) {
-        setContextMenu(prev => ({ ...prev, visible: false }));
+    // Prevent context menu if clicking on an existing annotation
+    const target = e.target as HTMLElement;
+    if (target.closest('.bg-yellow-300') || target.closest('.has-note')) {
+        setContextMenu(prev => ({ ...prev, visible: false, range: null }));
         return;
     }
 
     const selection = window.getSelection();
-    if (selection && selection.toString().length > 0) {
+    if (selection && selection.toString().trim().length > 0) {
       const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
       const containerRect = passageRef.current?.getBoundingClientRect();
 
-      if (containerRect) {
+      if (containerRect && passageRef.current) {
          setContextMenu({
             x: e.clientX - containerRect.left,
-            y: e.clientY - containerRect.top + 10,
-            visible: true
+            y: e.clientY - containerRect.top + passageRef.current.scrollTop + 10,
+            visible: true,
+            range: range
         });
       }
     } else {
        if (contextMenu.visible) {
-           setContextMenu(prev => ({ ...prev, visible: false }));
+           setContextMenu(prev => ({ ...prev, visible: false, range: null }));
        }
     }
   };
@@ -51,13 +53,14 @@ const Passage: React.FC<PassageProps> = ({ passage }) => {
                 parent.insertBefore(target.firstChild, target);
             }
             parent.removeChild(target);
+            parent.normalize(); // Merges adjacent text nodes
         }
     }
   };
 
   const handleClickOutside = useCallback((event: globalThis.MouseEvent) => {
     if (contextMenu.visible && passageRef.current && !passageRef.current.contains(event.target as Node)) {
-        setContextMenu(prev => ({ ...prev, visible: false }));
+        setContextMenu({ x: 0, y: 0, visible: false, range: null });
     }
   }, [contextMenu.visible]);
 
@@ -69,21 +72,48 @@ const Passage: React.FC<PassageProps> = ({ passage }) => {
   }, [handleClickOutside]);
 
   const handleHighlight = () => {
-    const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
+    const { range } = contextMenu;
+    if (range) {
       const span = document.createElement('span');
       span.className = 'bg-yellow-300 cursor-pointer';
       span.title = 'Click to remove highlight';
       try {
           range.surroundContents(span);
+          window.getSelection()?.removeAllRanges();
       } catch (e) {
           console.error("Could not surround contents, likely due to partial node selection.", e);
       }
-      selection.removeAllRanges();
     }
-    setContextMenu(prev => ({...prev, visible: false}));
+    setContextMenu({ x: 0, y: 0, visible: false, range: null });
   };
+
+  const handleNote = () => {
+    const { range } = contextMenu;
+    if (!range || range.collapsed) return;
+
+    const noteText = window.prompt("Enter your note:");
+    if (noteText) {
+      const span = document.createElement('span');
+      span.className = 'has-note';
+      span.title = noteText;
+      
+      const icon = document.createElement('i');
+      icon.className = 'fas fa-comment-dots note-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      
+      try {
+        const contents = range.extractContents();
+        span.appendChild(contents);
+        span.appendChild(icon);
+        range.insertNode(span);
+        window.getSelection()?.removeAllRanges();
+      } catch (e) {
+        console.error("Could not create note, likely due to partial node selection.", e);
+      }
+    }
+    setContextMenu({ x: 0, y: 0, visible: false, range: null });
+  };
+
 
   return (
     <div className="bg-white p-6 overflow-y-auto h-full relative" ref={passageRef} onMouseUp={handleMouseUp} onClick={handlePassageClick}>
@@ -105,8 +135,11 @@ const Passage: React.FC<PassageProps> = ({ passage }) => {
           style={{ top: contextMenu.y, left: contextMenu.x }}
           className="absolute bg-white border border-gray-300 rounded-md shadow-lg py-1 z-30"
         >
-          <button onClick={handleHighlight} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+          <button onClick={handleHighlight} className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
             <i className="fas fa-highlighter mr-2"></i>Highlight
+          </button>
+          <button onClick={handleNote} className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <i className="fas fa-comment-dots mr-2"></i>Note
           </button>
         </div>
       )}
