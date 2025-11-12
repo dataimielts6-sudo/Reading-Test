@@ -366,6 +366,6 @@ const CAMBRIDGE_20_TEST_1_ANSWERS: Answer = {
 };
 
 export const ALL_TESTS: TestDefinition[] = [
-  { id: 'c18t1', name: 'Cambridge 18 - Reading Test 1', data: CAMBRIDGE_18_TEST_1_DATA, answers: CAMBRIDGE_18_TEST_1_ANSWERS },
-  { id: 'c20t1', name: 'Cambridge 20 - Reading Test 1', data: CAMBRIDGE_20_TEST_1_DATA, answers: CAMBRIDGE_20_TEST_1_ANSWERS },
+  { id: 'c20t1', name: 'Cambridge 20 - Reading Test 1', data: CAMBRIDGE_18_TEST_1_DATA, answers: CAMBRIDGE_18_TEST_1_ANSWERS },
+  { id: 'c20t2', name: 'Cambridge 20 - Reading Test 2', data: CAMBRIDGE_20_TEST_1_DATA, answers: CAMBRIDGE_20_TEST_1_ANSWERS },
 ];

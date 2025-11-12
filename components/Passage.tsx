@@ -84,25 +84,11 @@ const Passage: React.FC<PassageProps> = ({ passage }) => {
     }
     setContextMenu(prev => ({...prev, visible: false}));
   };
-  
-  const clearAllHighlights = () => {
-      if (passageRef.current) {
-          const highlights = passageRef.current.querySelectorAll('span.bg-yellow-300');
-          highlights.forEach(highlight => {
-              const parent = highlight.parentNode;
-              while (highlight.firstChild) {
-                  parent?.insertBefore(highlight.firstChild, highlight);
-              }
-              parent?.removeChild(highlight);
-          });
-      }
-  };
 
   return (
     <div className="bg-white p-6 overflow-y-auto h-full relative" ref={passageRef} onMouseUp={handleMouseUp} onClick={handlePassageClick}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">{passage.subtitle}</h2>
-        <button onClick={clearAllHighlights} className="text-sm bg-gray-200 px-3 py-1 rounded-md hover:bg-gray-300">Clear Highlights</button>
       </div>
       
       <div className="prose max-w-none text-gray-700 leading-relaxed">

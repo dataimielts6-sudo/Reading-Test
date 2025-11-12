@@ -93,21 +93,6 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
     }
     setContextMenu(prev => ({...prev, visible: false}));
   };
-  
-  const clearAllHighlights = () => {
-      if (questionsRef.current) {
-          const highlights = questionsRef.current.querySelectorAll('span.bg-yellow-300');
-          highlights.forEach(highlight => {
-              const parent = highlight.parentNode;
-              if (parent) {
-                  while (highlight.firstChild) {
-                      parent.insertBefore(highlight.firstChild, highlight);
-                  }
-                  parent.removeChild(highlight);
-              }
-          });
-      }
-  };
 
   const renderQuestionType = (qGroup: Question) => {
     switch (qGroup.type) {
@@ -241,7 +226,6 @@ const Questions: React.FC<QuestionsProps> = ({ questionsData, answers, onAnswerC
     <div className="bg-gray-50 p-6 overflow-y-auto h-full relative" ref={questionsRef} onMouseUp={handleMouseUp} onClick={handleQuestionsClick}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">Questions</h2>
-        <button onClick={clearAllHighlights} className="text-sm bg-gray-200 px-3 py-1 rounded-md hover:bg-gray-300">Clear Highlights</button>
       </div>
       {questionsData.map(qGroup => (
         <div key={qGroup.id} className="mb-8 p-4 border rounded-lg bg-white shadow">
