@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, MouseEvent, useCallback, useEffect } from 'react';
 import { Question, QuestionType, Answer } from '../types';
 
@@ -126,14 +127,9 @@ const Questions: React.FC<QuestionsProps> = ({
       span.className = 'has-note';
       span.title = noteText;
       
-      const icon = document.createElement('i');
-      icon.className = 'fas fa-comment-dots note-icon';
-      icon.setAttribute('aria-hidden', 'true');
-      
       try {
         const contents = range.extractContents();
         span.appendChild(contents);
-        span.appendChild(icon);
         range.insertNode(span);
         window.getSelection()?.removeAllRanges();
       } catch (e) {

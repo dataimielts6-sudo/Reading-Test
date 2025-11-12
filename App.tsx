@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { ALL_TESTS, TestDefinition } from './constants';
 import Header from './components/Header';
@@ -140,7 +141,6 @@ const App: React.FC = () => {
       </div>
       <ControlPanel
         currentPart={currentPart}
-        setCurrentPart={setCurrentPart}
         answers={answers}
         testParts={selectedTest.data}
         onQuestionSelect={handleQuestionSelect}
