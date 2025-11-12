@@ -1,4 +1,3 @@
-
 export enum QuestionType {
   TRUE_FALSE_NOT_GIVEN,
   NOTE_COMPLETION,
@@ -7,6 +6,8 @@ export enum QuestionType {
   SUMMARY_COMPLETION,
   MULTIPLE_CHOICE,
   SENTENCE_COMPLETION,
+  MULTIPLE_CHOICE_MULTIPLE,
+  SUMMARY_COMPLETION_OPTIONS,
 }
 
 export interface Question {
@@ -15,7 +16,6 @@ export interface Question {
   instructions: string;
   questionGroupTitle?: string;
   questions: QuestionDetail[];
-  // FIX: Added optional options property to Question interface
   options?: string[];
 }
 

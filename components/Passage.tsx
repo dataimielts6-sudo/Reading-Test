@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, MouseEvent, useCallback, useEffect } from 'react';
 import { Passage as PassageType } from '../types';
 
@@ -17,6 +16,12 @@ const Passage: React.FC<PassageProps> = ({ passage }) => {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false });
 
   const handleMouseUp = (e: MouseEvent<HTMLDivElement>) => {
+    // Prevent context menu if clicking on an existing highlight
+    if ((e.target as HTMLElement).tagName === 'SPAN' && (e.target as HTMLElement).classList.contains('bg-yellow-300')) {
+        setContextMenu(prev => ({ ...prev, visible: false }));
+        return;
+    }
+
     const selection = window.getSelection();
     if (selection && selection.toString().length > 0) {
       const range = selection.getRangeAt(0);
@@ -37,6 +42,19 @@ const Passage: React.FC<PassageProps> = ({ passage }) => {
     }
   };
   
+  const handlePassageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'SPAN' && target.classList.contains('bg-yellow-300')) {
+        const parent = target.parentNode;
+        if (parent) {
+            while (target.firstChild) {
+                parent.insertBefore(target.firstChild, target);
+            }
+            parent.removeChild(target);
+        }
+    }
+  };
+
   const handleClickOutside = useCallback((event: globalThis.MouseEvent) => {
     if (contextMenu.visible && passageRef.current && !passageRef.current.contains(event.target as Node)) {
         setContextMenu(prev => ({ ...prev, visible: false }));
@@ -50,13 +68,13 @@ const Passage: React.FC<PassageProps> = ({ passage }) => {
     };
   }, [handleClickOutside]);
 
-
   const handleHighlight = () => {
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
       const span = document.createElement('span');
-      span.className = 'bg-yellow-300';
+      span.className = 'bg-yellow-300 cursor-pointer';
+      span.title = 'Click to remove highlight';
       try {
           range.surroundContents(span);
       } catch (e) {
@@ -81,7 +99,7 @@ const Passage: React.FC<PassageProps> = ({ passage }) => {
   };
 
   return (
-    <div className="bg-white p-6 overflow-y-auto h-full relative" ref={passageRef} onMouseUp={handleMouseUp}>
+    <div className="bg-white p-6 overflow-y-auto h-full relative" ref={passageRef} onMouseUp={handleMouseUp} onClick={handlePassageClick}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">{passage.subtitle}</h2>
         <button onClick={clearAllHighlights} className="text-sm bg-gray-200 px-3 py-1 rounded-md hover:bg-gray-300">Clear Highlights</button>

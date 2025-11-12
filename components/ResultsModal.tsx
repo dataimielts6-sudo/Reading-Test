@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Answer } from '../types';
 
@@ -11,11 +10,35 @@ interface ResultsModalProps {
 const ResultsModal: React.FC<ResultsModalProps> = ({ answers, correctAnswers, onClose }) => {
   const calculateScore = () => {
     let score = 0;
-    // FIX: Iterate over keys and parse to number to correctly access answers.
     for (const qId in correctAnswers) {
       const numericQId = parseInt(qId, 10);
-      if (answers[numericQId] && answers[numericQId].toLowerCase().trim() === correctAnswers[numericQId].toLowerCase().trim()) {
-        score++;
+      const userAnswer = (answers[numericQId] || '').toLowerCase().trim();
+      const correctAns = (correctAnswers[numericQId] || '').toLowerCase().trim();
+
+      if (!userAnswer) continue;
+
+      // Handle multi-select answers (e.g., "A,C")
+      if (correctAns.includes(',')) {
+        const userAnswerSorted = userAnswer.split(',').sort().join(',');
+        const correctAnsSorted = correctAns.split(',').sort().join(',');
+        if (userAnswerSorted === correctAnsSorted) {
+          // A bit of a hack: since multi-choice questions have 2 q_ids but 1 answer,
+          // we check if the next question has the same answer to credit both.
+          const nextQId = numericQId + 1;
+          if (correctAnswers[nextQId] && correctAnswers[nextQId].toLowerCase().trim().split(',').sort().join(',') === correctAnsSorted) {
+            score += 2;
+          } else {
+            score++;
+          }
+        }
+      } else if (userAnswer === correctAns) {
+         // Skip scoring for the second part of a multi-choice question that's already been scored
+        const prevQId = numericQId - 1;
+        if (correctAnswers[prevQId] && correctAnswers[prevQId].includes(',')) {
+          // This is the second ID of a multi-choice question, it was handled above.
+        } else {
+          score++;
+        }
       }
     }
     return score;
@@ -37,15 +60,31 @@ const ResultsModal: React.FC<ResultsModalProps> = ({ answers, correctAnswers, on
         </div>
         <div className="overflow-y-auto p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* FIX: Use Object.keys to iterate and avoid type issues with Object.entries on number-keyed objects. */}
             {Object.keys(correctAnswers).map((qId) => {
               const numericQId = parseInt(qId, 10);
               const correctAns = correctAnswers[numericQId];
               const userAnswer = answers[numericQId] || 'No Answer';
-              const isCorrect = userAnswer.toLowerCase().trim() === correctAns.toLowerCase().trim();
+              
+              let isCorrect = false;
+              if (correctAns.includes(',')) {
+                const userAnswerSorted = userAnswer.toLowerCase().trim().split(',').sort().join(',');
+                const correctAnsSorted = correctAns.toLowerCase().trim().split(',').sort().join(',');
+                isCorrect = userAnswerSorted === correctAnsSorted;
+              } else {
+                isCorrect = userAnswer.toLowerCase().trim() === correctAns.toLowerCase().trim();
+              }
+              
+              // Don't render the second question ID for multi-choice
+              const prevQId = numericQId - 1;
+              if (correctAnswers[prevQId] && correctAnswers[prevQId].includes(',')) {
+                  return null;
+              }
+              
+              const displayQId = (correctAnswers[numericQId].includes(',') && correctAnswers[numericQId+1]) ? `${qId}-${numericQId+1}` : qId;
+
               return (
                 <div key={qId} className={`p-3 rounded-lg border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                  <p className="font-bold text-gray-700">Question {qId}</p>
+                  <p className="font-bold text-gray-700">Question {displayQId}</p>
                   <p className="text-sm">Your answer: <span className="font-semibold">{userAnswer}</span></p>
                   {!isCorrect && <p className="text-sm">Correct answer: <span className="font-semibold text-green-700">{correctAns}</span></p>}
                 </div>

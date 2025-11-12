@@ -1,23 +1,44 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { IELTS_TEST_DATA, CORRECT_ANSWERS } from './constants';
+import { ALL_TESTS, TestDefinition } from './constants';
 import Header from './components/Header';
 import TestArea from './components/TestArea';
 import ControlPanel from './components/ControlPanel';
 import ResultsModal from './components/ResultsModal';
 import { Answer } from './types';
 
+const TestSelectionScreen: React.FC<{ onSelectTest: (test: TestDefinition) => void }> = ({ onSelectTest }) => (
+  <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+    <div className="w-full max-w-2xl text-center p-8 bg-white rounded-lg shadow-xl">
+      <h1 className="text-3xl font-bold text-gray-800 mb-4">IELTS Reading Test Simulator</h1>
+      <p className="text-gray-600 mb-8">Please select a practice test to begin. You will have 60 minutes to complete 3 sections and 40 questions.</p>
+      <div className="space-y-4">
+        {ALL_TESTS.map(test => (
+          <div key={test.id} className="p-4 border rounded-lg flex justify-between items-center bg-gray-50">
+            <h2 className="text-xl font-semibold text-gray-700">{test.name}</h2>
+            <button
+              onClick={() => onSelectTest(test)}
+              className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 transition-transform transform hover:scale-105"
+            >
+              Start Test
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+
 const App: React.FC = () => {
   const [currentPart, setCurrentPart] = useState(0);
   const [answers, setAnswers] = useState<Answer>({});
   const [timeLeft, setTimeLeft] = useState(3600); // 60 minutes in seconds
   const [showResults, setShowResults] = useState(false);
-  const [testStarted, setTestStarted] = useState(false);
+  const [selectedTest, setSelectedTest] = useState<TestDefinition | null>(null);
 
   useEffect(() => {
-    // FIX: Changed NodeJS.Timeout to number for browser environments.
     let timer: number;
-    if (testStarted && timeLeft > 0 && !showResults) {
+    if (selectedTest && timeLeft > 0 && !showResults) {
       timer = window.setInterval(() => {
         setTimeLeft(prevTime => prevTime - 1);
       }, 1000);
@@ -26,10 +47,10 @@ const App: React.FC = () => {
     }
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeLeft, testStarted, showResults]);
+  }, [timeLeft, selectedTest, showResults]);
 
-  const handleStartTest = () => {
-    setTestStarted(true);
+  const handleSelectTest = (test: TestDefinition) => {
+    setSelectedTest(test);
   };
 
   const handleAnswerChange = useCallback((questionId: number, answer: string) => {
@@ -47,30 +68,25 @@ const App: React.FC = () => {
     setShowResults(false);
     // Optional: reset test state here if needed
   };
+  
+  const handleExitTest = () => {
+    setSelectedTest(null);
+    setAnswers({});
+    setTimeLeft(3600);
+    setCurrentPart(0);
+    setShowResults(false);
+  }
 
-  if (!testStarted) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-center p-8 bg-white rounded-lg shadow-xl">
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">IELTS Reading Test Simulator</h1>
-          <p className="text-gray-600 mb-8">You will have 60 minutes to complete 3 sections and 40 questions.</p>
-          <button
-            onClick={handleStartTest}
-            className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 transition-transform transform hover:scale-105"
-          >
-            Start Test
-          </button>
-        </div>
-      </div>
-    );
+  if (!selectedTest) {
+    return <TestSelectionScreen onSelectTest={handleSelectTest} />;
   }
 
   return (
     <div className="flex flex-col h-screen font-sans">
-      <Header timeLeft={timeLeft} onSubmit={handleSubmit} />
+      <Header timeLeft={timeLeft} onSubmit={handleSubmit} onExit={handleExitTest} testName={selectedTest.name} />
       <div className="flex-grow overflow-hidden">
         <TestArea
-          partData={IELTS_TEST_DATA[currentPart]}
+          partData={selectedTest.data[currentPart]}
           answers={answers}
           onAnswerChange={handleAnswerChange}
         />
@@ -83,7 +99,7 @@ const App: React.FC = () => {
       {showResults && (
         <ResultsModal
           answers={answers}
-          correctAnswers={CORRECT_ANSWERS}
+          correctAnswers={selectedTest.answers}
           onClose={handleCloseResults}
         />
       )}
