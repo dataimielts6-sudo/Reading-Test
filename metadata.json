@@ -1,0 +1,5 @@
+{
+  "name": "IELTS Reading Test Simulator",
+  "description": "A fully functional IELTS Reading Test simulator built with React. It features three reading passages, 40 questions, a timer, text highlighting, and a final results summary, replicating the real test environment.",
+  "requestFramePermissions": []
+}
